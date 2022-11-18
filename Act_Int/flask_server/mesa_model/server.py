@@ -1,5 +1,5 @@
-from model import RandomModel, ObstacleAgent, BoxAgent, StorageAgent, RobotAgent
-from agent import RobotState
+from .model import RandomModel, ObstacleAgent, BoxAgent, StorageAgent, RobotAgent
+from .agent import RobotState
 import mesa
 from mesa.visualization.modules import CanvasGrid, BarChartModule
 from mesa.visualization.ModularVisualization import ModularServer
@@ -43,7 +43,7 @@ def agent_portrayal(agent):
 
     return portrayal
 
-model_params = {"N":mesa.visualization.Slider("N", 1,1,10), "B":10, "width":10, "height":10, "vision_intensity":mesa.visualization.Slider("vision_intensity",1,1,10), "num_storage":mesa.visualization.Slider("num_storage",1,1,5)}
+model_params = {"N":mesa.visualization.Slider("num_robots", 1,1,10), "num_boxes":10, "width":10, "height":10, "vision_intensity":mesa.visualization.Slider("vision_intensity",1,1,10), "num_storage":mesa.visualization.Slider("num_storage",1,1,5)}
 #number of steps before ending
 model_params["max_time"] = 500
 
