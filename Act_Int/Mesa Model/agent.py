@@ -40,10 +40,16 @@ class RobotAgent(Agent):
         super().__init__(unique_id, model)
         self.direction = 4
         self.steps_taken = 0
+        self.explore_steps = 0
         self.state= RobotState.EXPLORE
         self.vision_intensity = vision_intensity
 
     def explore(self):
+        #Reduce vision intensity if the robots gets to n steps without finding any box
+        print(self.explore_steps)
+        print(self.vision_intensity)
+        if self.explore_steps%10 == 0 and self.vision_intensity>1:
+            self.vision_intensity -=1
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
@@ -60,6 +66,7 @@ class RobotAgent(Agent):
             self.model.grid.move_agent(self, (self.pos[0]+1, self.pos[1]))
         elif direction == DirectionsEnum.LEFT:
             self.model.grid.move_agent(self, (self.pos[0]-1, self.pos[1]))
+        self.explore_steps += 1
 
         
     def move_to_closest_box(self) ->  int:
@@ -118,6 +125,7 @@ class RobotAgent(Agent):
                     #Consider two agents taking the box at the same time
                     self.model.grid.remove_agent(cell_container[0])
                     self.state = RobotState.DELIVER
+                    self.explore_steps=0
                     return True
         return False
 
@@ -173,6 +181,7 @@ class RobotAgent(Agent):
         self.move_to_closest_storage(possible_steps)
         
         
+        
     def deposit_to_near_storage(self,possible_steps):
         for step in possible_steps:
             cell_container= self.model.grid.get_cell_list_contents(step)
@@ -182,6 +191,7 @@ class RobotAgent(Agent):
                     try:
                         cell_container[0].add_box()
                         self.state = RobotState.EXPLORE
+                        self.explore_steps = 0
                         return True
                     except:
                         #Should not get here
@@ -199,6 +209,8 @@ class RobotAgent(Agent):
 
         elif self.state == RobotState.DELIVER:
             self.deliver()
+
+        self.steps_taken+=1
 
     def step(self):
         """ 
