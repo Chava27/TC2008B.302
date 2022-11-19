@@ -23,7 +23,20 @@ class DirectionsEnum(enum.IntEnum):
     CENTER=4
 
 
-class RobotAgent(Agent):
+class SerializeAgent(Agent):
+    @property
+    def serialized(self) -> dict:
+        return {
+            "agent_id": str(self.unique_id),
+            "agent_type": self.__class__.__name__,
+            "agent_pos": {
+                "x": self.pos[0],
+                "y": self.pos[1]
+            },
+        }
+
+
+class RobotAgent(SerializeAgent):
     """
     Agent that moves randomly.
     Attributes:
@@ -38,11 +51,17 @@ class RobotAgent(Agent):
             model: Model reference for the agent
         """
         super().__init__(unique_id, model)
-        self.direction = 4
         self.steps_taken = 0
         self.explore_steps = 0
         self.state= RobotState.EXPLORE
-        self.vision_intensity = vision_intensity
+        self.vision_intensity = vision_intensity  
+    
+    @property
+    def serialized(self):
+        # merge with super
+        return {**super().serialized, **{
+            "state": self.state,
+        }}
 
     def explore(self):
         #Reduce vision intensity if the robots gets to n steps without finding any box
@@ -220,7 +239,7 @@ class RobotAgent(Agent):
         # print(f"Agente: {self.unique_id} movimiento {self.direction}")
         self.move()
 
-class BoxAgent(Agent):
+class BoxAgent(SerializeAgent):
     """
     Trash agent. Must be eliminated when interaction with Random Agent.
     """
@@ -230,7 +249,7 @@ class BoxAgent(Agent):
     def step(self):
         pass  
 
-class StorageAgent(Agent):
+class StorageAgent(SerializeAgent):
     """
     Trash agent. Must be eliminated when interaction with Random Agent.
     """
@@ -238,6 +257,13 @@ class StorageAgent(Agent):
         super().__init__(unique_id, model)
         self.box_count=0
         self.box_limit=5
+
+    @property
+    def serialized(self):
+        # merge with super
+        return {**super().serialized, **{
+            "box_count": self.box_count,
+        }}
 
     def add_box(self):
         if not self.is_full():
@@ -251,7 +277,9 @@ class StorageAgent(Agent):
     def step(self):
         pass  
 
-class ObstacleAgent(Agent):
+
+
+class ObstacleAgent(SerializeAgent):
 
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)

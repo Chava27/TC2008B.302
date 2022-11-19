@@ -1,5 +1,5 @@
-from model import RandomModel, ObstacleAgent, BoxAgent, StorageAgent, RobotAgent
-from agent import RobotState
+from .model import RandomModel, ObstacleAgent, BoxAgent, StorageAgent, RobotAgent
+from .agent import RobotState
 import mesa
 from mesa.visualization.modules import CanvasGrid, BarChartModule
 from mesa.visualization.ModularVisualization import ModularServer
