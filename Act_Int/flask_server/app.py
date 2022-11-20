@@ -62,6 +62,7 @@ def reset():
 
 @app.route("/api/v1/statistics")
 def statistics():
+    # retun datacollector info 
     return "Hello World!"
 
 

@@ -54,6 +54,7 @@ class RobotAgent(SerializeAgent):
         self.steps_taken = 0
         self.explore_steps = 0
         self.state= RobotState.EXPLORE
+        self.initial_vision_intensity = vision_intensity
         self.vision_intensity = vision_intensity  
     
     @property
@@ -65,18 +66,14 @@ class RobotAgent(SerializeAgent):
 
     def explore(self):
         #Reduce vision intensity if the robots gets to n steps without finding any box
-        print(self.explore_steps)
-        print(self.vision_intensity)
-        if self.explore_steps%10 == 0 and self.vision_intensity>1:
+        if self.explore_steps%50 == 0 and self.vision_intensity>1:
             self.vision_intensity -=1
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
         if self.pickup_closest_box(possible_steps):
-            print("PICK BOX")
             return
         direction= self.move_to_closest_box()
-        print("Direction",direction)
         if direction == DirectionsEnum.UP:
             self.model.grid.move_agent(self, (self.pos[0], self.pos[1]+1))
         elif direction == DirectionsEnum.DOWN:
@@ -87,9 +84,8 @@ class RobotAgent(SerializeAgent):
             self.model.grid.move_agent(self, (self.pos[0]-1, self.pos[1]))
         self.explore_steps += 1
 
-        
     def move_to_closest_box(self) ->  int:
-        print(self.pos[0], self.pos[1])
+    
         #UP, DOWN, RIGHT, LEFT
         score=[self.vision_intensity for i in range(4)]
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
@@ -97,7 +93,9 @@ class RobotAgent(SerializeAgent):
             if self.model.grid.is_cell_empty(pos):
                 score[DirectionsEnum.UP]+=1
                 continue
-            if isinstance(self.model.grid.get_cell_list_contents(pos)[0],BoxAgent):
+
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent) and not instance.picked:
                 score[DirectionsEnum.UP]+= (y-self.pos[1]+1)*2
                 break
             break
@@ -106,7 +104,9 @@ class RobotAgent(SerializeAgent):
             if self.model.grid.is_cell_empty(pos):
                 score[DirectionsEnum.DOWN]+=1
                 continue
-            if isinstance(self.model.grid.get_cell_list_contents(pos)[0],BoxAgent):
+            
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent) and not instance.picked:
                 score[DirectionsEnum.DOWN]+= (self.pos[1]-y+1)*2
                 break
             break
@@ -115,8 +115,9 @@ class RobotAgent(SerializeAgent):
             if self.model.grid.is_cell_empty(pos):
                 score[DirectionsEnum.RIGHT]+=1
                 continue
-            if isinstance(self.model.grid.get_cell_list_contents(pos)[0],BoxAgent):
-                print("X:",x,"SELF.POS",self.pos[0])
+
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent) and not instance.picked:
                 score[DirectionsEnum.RIGHT]+= (x-self.pos[0]+1)*2
                 break
             break
@@ -125,14 +126,15 @@ class RobotAgent(SerializeAgent):
             if self.model.grid.is_cell_empty(pos):
                 score[DirectionsEnum.LEFT]+=1
                 continue
-            if isinstance(self.model.grid.get_cell_list_contents(pos)[0],BoxAgent):
+            
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent) and not instance.picked:
                 score[DirectionsEnum.LEFT]+= (self.pos[0]-x+1)*2
                 break
             break
         scores= list(filter(lambda x: x!=0, score)) 
         if len(scores)==0:
             return DirectionsEnum.CENTER
-        print("Score",score)
         direction = random.choice([i for i, x in enumerate(score) if x == max(score)])
         return direction
                    
@@ -140,16 +142,17 @@ class RobotAgent(SerializeAgent):
         for step in possible_steps:
             cell_container= self.model.grid.get_cell_list_contents(step)
             if not self.model.grid.is_cell_empty(step):
-                if isinstance(cell_container[0],BoxAgent):
+                instance = cell_container[0]
+                if isinstance(instance,BoxAgent) and not instance.picked:
                     #Consider two agents taking the box at the same time
-                    self.model.grid.remove_agent(cell_container[0])
+                    instance.picked = True
                     self.state = RobotState.DELIVER
                     self.explore_steps=0
+                    self.vision_intensity = self.initial_vision_intensity
                     return True
         return False
 
     def get_closest_storage(self,storages):
-        print("Storages:", storages)
         min_storage_distance= math.inf
         min_storage= None
         for storage in storages:
@@ -166,19 +169,14 @@ class RobotAgent(SerializeAgent):
     def move_to_closest_storage(self, possible_steps):
         storages=filter(lambda x: isinstance(x,StorageAgent) and not x.is_full(), self.model.schedule.agents)
 
-        print("Storages: ", storages)
-
         closest_storage_cords= self.get_closest_storage(storages)
-        print("Closest Storage Cords",closest_storage_cords)
         if abs(closest_storage_cords[0]) > abs(closest_storage_cords[1]):
             target_pos=(self.pos[0]+sign(closest_storage_cords[0]),self.pos[1])
-            print("Target Pos: ", target_pos)
             if self.model.grid.is_cell_empty(target_pos):
                 self.model.grid.move_agent(self,target_pos)
                 return
         target_pos=(self.pos[0],self.pos[1]+sign(closest_storage_cords[1]))
         if self.model.grid.is_cell_empty(target_pos):
-                print("MOVING UP/DOWN, EMPTY")
                 self.model.grid.move_agent(self,target_pos)
                 return
         available_pos = list(filter(lambda x: self.model.grid.is_cell_empty(x), possible_steps))
@@ -211,6 +209,7 @@ class RobotAgent(SerializeAgent):
                         cell_container[0].add_box()
                         self.state = RobotState.EXPLORE
                         self.explore_steps = 0
+                        self.vision_intensity = self.initial_vision_intensity
                         return True
                     except:
                         #Should not get here
@@ -246,8 +245,17 @@ class BoxAgent(SerializeAgent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
 
+        self.picked = False
+
     def step(self):
         pass  
+    
+    @property
+    def serialized(self):
+        # merge with super
+        return {**super().serialized, **{
+            "picked": self.picked,
+        }}
 
 class StorageAgent(SerializeAgent):
     """

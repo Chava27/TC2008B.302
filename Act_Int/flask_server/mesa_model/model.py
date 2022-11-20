@@ -21,7 +21,6 @@ class RandomModel(Model):
         self.running = True 
         self.num_storage = num_storage
 
-
         self.datacollector = DataCollector( 
         agent_reporters={
             "Steps": lambda a: a.steps_taken if isinstance(a, RobotAgent) else 0
