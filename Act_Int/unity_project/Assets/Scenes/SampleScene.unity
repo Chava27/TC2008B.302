@@ -206,7 +206,7 @@ MonoBehaviour:
   floor: {fileID: 957056681}
   storagePrefab: {fileID: 2171994126644675526, guid: adc65366ba94147469e25005e0dc4b6f, type: 3}
   boxPrefab: {fileID: 853642124128618351, guid: 7c1d16423d530f24782f31970411b898, type: 3}
-  nRobots: 6
+  nRobots: 4
   nBoxes: 30
   maxTime: 100
   visionIntensity: 5

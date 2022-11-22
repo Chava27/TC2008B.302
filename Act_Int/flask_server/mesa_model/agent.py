@@ -73,7 +73,6 @@ class RobotAgent(SerializeAgent):
         self.explore_steps = 1
         self.state= RobotState.EXPLORE
         self.initial_vision_intensity = vision_intensity
-        print("Vision_intensity",vision_intensity)
         self.vision_intensity = vision_intensity
         #[[Empty pos], [Invalid BOX Pos] [box pos]]  
         self.map = [set(),set(),set()]
@@ -93,12 +92,13 @@ class RobotAgent(SerializeAgent):
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
         if self.inspect_steps(possible_steps):
-            print("Enter Inspect Steps")
+            print("Founded Box while inspeting!")
             return
         if len(self.map[2])>0:
             print("Box List:", self.map[2])
             print("Moving to Known Box")
-            direction = self.move_to_closest_known_box(possible_steps)
+            #no tiene sentido guardar en variable no retorna nada  <-----
+            self.move_to_closest_known_box(possible_steps)
             return
         direction= self.move_to_closest_box()
         if direction == DirectionsEnum.UP:
@@ -111,19 +111,21 @@ class RobotAgent(SerializeAgent):
             self.model.grid.move_agent(self, (self.pos[0]-1, self.pos[1]))
         self.explore_steps += 1
 
+    #no falta ignorar los boxes invalidados??? <----- CHECK
     def move_to_closest_box(self) ->  int:
         #UP, DOWN, RIGHT, LEFT
-        print("Vision Int", self.vision_intensity)
+        print("Vision Int Explore Mode", self.vision_intensity)
         score=[self.vision_intensity for i in range(4)]
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
             pos = (self.pos[0],y)
-            if self.model.grid.is_cell_empty(pos):
+            #Modificar self.model.grid_is_cell_empty(pos) <------
+            if self.is_empty(pos):
                 score[DirectionsEnum.UP]+=1
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Found on:", pos)
+                print("Box Coords Found on:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(y-self.pos[1])+1)
                 score[DirectionsEnum.UP]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
@@ -131,13 +133,13 @@ class RobotAgent(SerializeAgent):
             break
         for y in range(self.pos[1]-1, self.pos[1]-self.vision_intensity-1,-1):
             pos = (self.pos[0],y)
-            if self.model.grid.is_cell_empty(pos):
+            if self.is_empty(pos):
                 score[DirectionsEnum.DOWN]+=1
                 continue
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Found on:", pos)
+                print("Box Coords Found on:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(self.pos[1]-y)+1)
                 score[DirectionsEnum.DOWN]+= (self.vision_intensity-abs(self.pos[1]-y)+1)*self.vision_intensity
@@ -145,13 +147,13 @@ class RobotAgent(SerializeAgent):
             break
         for x in range(self.pos[0]+1, self.pos[0]+self.vision_intensity+1):
             pos = (x,self.pos[1])
-            if self.model.grid.is_cell_empty(pos):
+            if self.is_empty(pos):
                 score[DirectionsEnum.RIGHT]+=1
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Found on:", pos)
+                print("Box Coords Found on:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(x-self.pos[0])+1)
                 score[DirectionsEnum.RIGHT]+= (self.vision_intensity-abs(x-self.pos[0])+1)*self.vision_intensity
@@ -159,13 +161,12 @@ class RobotAgent(SerializeAgent):
             break
         for x in range(self.pos[0]-1, self.pos[0]-self.vision_intensity-1,-1):
             pos = (x,self.pos[1])
-            if self.model.grid.is_cell_empty(pos):
+            if self.is_empty(pos):
                 score[DirectionsEnum.LEFT]+=1
                 continue
-            
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Found on:", pos)
+                print("Box Coords Found on:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(self.pos[0]-x)+1)
                 score[DirectionsEnum.LEFT]+= (self.vision_intensity-abs(self.pos[0]-x)+1)*self.vision_intensity
@@ -196,18 +197,23 @@ class RobotAgent(SerializeAgent):
                     return True
                 #if the box is already picked, add coor to invalid coord
                 if isinstance(instance,BoxAgent) and instance.picked:
-                    print("Remove box from valid:", step)
+                    print("Remove box from valid EXPLORE MODE:", step)
                     self.map[1].add(step)
                     self.map[2] = self.map[2].difference(self.map[1])
+                    continue
                 #if robots get to know each other. Share Map
                 if isinstance(instance,RobotAgent):
+                    print("Share Map to RobotAgent EXPLORE MODE:", step)
                     self.map=self.share_map(instance)
-        if self.model.grid.is_cell_empty(self.pos):
+                    continue
+        #????  <----- 
+        if not self.model.grid.is_cell_empty(self.pos):
+            cell_container= self.model.grid.get_cell_list_contents(self.pos)
+            instance= cell_container[0]
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Remove box from valid:", step)
+                print("Remove invalid box EMPTY:", self.pos)
                 self.map[1].add(step)
                 self.map[2] = self.map[2].difference(self.map[1])
-                    
         return False 
 
     def get_closest_storage(self,storages):
@@ -295,9 +301,9 @@ class RobotAgent(SerializeAgent):
                 instance = cell_container[0]
                 if isinstance(instance,RobotAgent):
                     self.map=self.share_map(instance)
-
+    #NO SERIA BUENA IDEA QUE DETECTE SI LA CAJA ES INVALIDA Y AGREGARLA AL MAPA <---------- check
     def update_map(self):
-        print("Vision Int", self.vision_intensity)
+        print("Vision Int DELIVER MODE", self.vision_intensity)
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
             pos = (self.pos[0],y)
             if self.is_empty(pos):
@@ -305,10 +311,14 @@ class RobotAgent(SerializeAgent):
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Found on:", pos)
+                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(y-self.pos[1])+1)
                 break
+            if isinstance(instance,BoxAgent) and instance.picked:
+                print("Invalid Box Found DELIVER MODE:", pos)
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
             break
         for y in range(self.pos[1]-1, self.pos[1]-self.vision_intensity-1,-1):
             pos = (self.pos[0],y)
@@ -317,10 +327,14 @@ class RobotAgent(SerializeAgent):
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Found on:", pos)
+                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(self.pos[1]-y)+1)
                 break
+            if isinstance(instance,BoxAgent) and instance.picked:
+                print("Invalid Box Found DELIVER MODE:", pos)
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
             break
         for x in range(self.pos[0]+1, self.pos[0]+self.vision_intensity+1):
             pos = (x,self.pos[1])
@@ -329,10 +343,14 @@ class RobotAgent(SerializeAgent):
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Found on:", pos)
+                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(x-self.pos[0])+1)
                 break
+            if isinstance(instance,BoxAgent) and instance.picked:
+                print("Invalid Box Found DELIVER MODE:", pos)
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
             break
         for x in range(self.pos[0]-1, self.pos[0]-self.vision_intensity-1,-1):
             pos = (x,self.pos[1])
@@ -341,10 +359,14 @@ class RobotAgent(SerializeAgent):
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Found on:", pos)
+                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
                 print(self.vision_intensity-abs(self.pos[0]-x)+1)
                 break
+            if isinstance(instance,BoxAgent) and instance.picked:
+                print("Invalid Box Found DELIVER MODE:", pos)
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
             break
         return
 
