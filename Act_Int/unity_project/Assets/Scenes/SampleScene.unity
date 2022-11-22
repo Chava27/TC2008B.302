@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.5455991, g: 0.6924006, b: 0.86239195, a: 1}
+  m_IndirectSpecularColor: {r: 0.54559904, g: 0.6924005, b: 0.8623915, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -206,14 +206,14 @@ MonoBehaviour:
   floor: {fileID: 957056681}
   storagePrefab: {fileID: 2171994126644675526, guid: adc65366ba94147469e25005e0dc4b6f, type: 3}
   boxPrefab: {fileID: 853642124128618351, guid: 7c1d16423d530f24782f31970411b898, type: 3}
-  nRobots: 5
-  nBoxes: 50
+  nRobots: 6
+  nBoxes: 30
   maxTime: 100
-  visionIntensity: 10
-  nStorages: 5
+  visionIntensity: 5
+  nStorages: 6
   width: 20
   height: 20
-  timeToUpdate: 0.1
+  timeToUpdate: 0.5
 --- !u!1 &747201991
 GameObject:
   m_ObjectHideFlags: 0
