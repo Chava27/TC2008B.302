@@ -67,6 +67,8 @@ def statistics(model_id):
         "max_steps": model.max_time,
         "current_time": model.time,
         "finished": not model.running,
+        "boxes_collected": sum(map(lambda x: x.box_count, model.storages)),
+        "total_boxes": model.num_box
      }
 
     last_rows = df[-model.num_agents:]

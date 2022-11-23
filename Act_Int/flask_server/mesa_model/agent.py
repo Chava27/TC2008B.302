@@ -3,12 +3,17 @@ import enum
 import random
 import math
 
+class Coord:
+    def __init__(self, pos) -> None:
+        self.pos = pos
+
 def sign(num):
     if num == 0:
         return 0
     return num//abs(num)
 
 def manhattan(a, b):
+    
     return sum(abs(val1-val2) for val1, val2 in zip(a,b))
 
 class RobotState(enum.IntEnum):
@@ -56,6 +61,7 @@ class RobotAgent(SerializeAgent):
         self.state= RobotState.EXPLORE
         self.initial_vision_intensity = vision_intensity
         self.vision_intensity = vision_intensity  
+        self.known_boxes = {} # (x,y) => bool
     
     @property
     def serialized(self):
@@ -69,15 +75,31 @@ class RobotAgent(SerializeAgent):
             self.vision_intensity -= 1
             self.explore_steps = 1
 
-    def explore(self):
-        #Reduce vision intensity if the robots gets to n steps without finding any box
-        self.decrease_vision()
+    def move_to_closest_known_box(self, known_boxes, possible_steps):
+        
+        closest = self.get_closest_instance(known_boxes)
+        self.move_to_coord(closest, possible_steps)
 
+
+    def explore(self):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
+        self.update_from_near_robots(possible_steps)
+
         if self.pickup_closest_box(possible_steps):
             return
+
+        known_boxes = list(map(lambda x: Coord(x[0]), list(filter(lambda picked: not picked[1], self.known_boxes.items()))))
+
+        if (len(known_boxes) > 0):
+            self.move_to_closest_known_box(known_boxes, possible_steps)
+            self.steps_taken+=1
+            return
+
+        #Reduce vision intensity if the robots gets to n steps without finding any box
+        self.decrease_vision()
+
         direction= self.move_to_closest_box()
         if direction == DirectionsEnum.UP:
             self.model.grid.move_agent(self, (self.pos[0], self.pos[1]+1))
@@ -103,7 +125,12 @@ class RobotAgent(SerializeAgent):
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and not instance.picked:
+            if isinstance(instance, BoxAgent):
+                self.known_boxes[instance.pos] = instance.picked
+
+                if instance.picked: # eq to empty
+                    score[DirectionsEnum.UP]+=1
+
                 score[DirectionsEnum.UP]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
                 break
             break
@@ -114,7 +141,13 @@ class RobotAgent(SerializeAgent):
                 continue
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and not instance.picked:
+            if isinstance(instance,BoxAgent):
+
+                self.known_boxes[instance.pos] = instance.picked
+
+                if instance.picked: # eq to empty
+                    score[DirectionsEnum.DOWN]+=1
+
                 score[DirectionsEnum.DOWN]+= (self.vision_intensity-abs(self.pos[1]-y)+1)*self.vision_intensity
                 break
             break
@@ -125,7 +158,13 @@ class RobotAgent(SerializeAgent):
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and not instance.picked:
+            if isinstance(instance,BoxAgent):
+
+                self.known_boxes[instance.pos] = instance.picked
+
+                if instance.picked: # eq to empty
+                    score[DirectionsEnum.RIGHT]+=1
+
                 score[DirectionsEnum.RIGHT]+= (self.vision_intensity-abs(x-self.pos[0])+1)*self.vision_intensity
                 break
             break
@@ -136,6 +175,12 @@ class RobotAgent(SerializeAgent):
                 continue
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
+
+                self.known_boxes[instance.pos] = instance.picked
+
+                if instance.picked: # eq to empty
+                    score[DirectionsEnum.LEFT]+=1
+
                 score[DirectionsEnum.LEFT]+= (self.vision_intensity-abs(self.pos[0]-x)+1)*self.vision_intensity
                 break
             break
@@ -152,37 +197,42 @@ class RobotAgent(SerializeAgent):
             cell_container= self.model.grid.get_cell_list_contents(step)
             if not self.model.grid.is_cell_empty(step):
                 instance = cell_container[0]
-                if isinstance(instance,BoxAgent) and not instance.picked:
+               
+                if isinstance(instance,BoxAgent):
+                    self.known_boxes[instance.pos] = instance.picked
+
+                    if instance.picked:
+                        continue
+
                     #Consider two agents taking the box at the same time
                     instance.picked = True
                     self.state = RobotState.DELIVER
-                    self.explore_steps=0
+                    self.explore_steps = 0
                     self.vision_intensity = self.initial_vision_intensity
+                    self.known_boxes[instance.pos] = True
                     return True
         return False
 
-    def get_closest_storage(self,storages):
+    def get_closest_instance(self,instances):
         min_storage_distance= math.inf
         min_storage= None
-        for storage in storages:
-            distance= manhattan(storage.pos, self.pos)
+        for instance in instances:
+            
+            distance= manhattan(instance.pos, self.pos)
             if distance < min_storage_distance:
-                min_storage = storage
+                min_storage = instance
                 min_storage_distance = distance
         if min_storage == None:
             return (0,0)
         return (min_storage.pos[0]-self.pos[0],min_storage.pos[1]-self.pos[1])
 
-    def move_to_closest_storage(self, possible_steps):
-        storages=filter(lambda x: isinstance(x,StorageAgent) and not x.is_full(), self.model.schedule.agents)
-
-        closest_storage_cords= self.get_closest_storage(storages)
-        if abs(closest_storage_cords[0]) > abs(closest_storage_cords[1]):
-            target_pos=(self.pos[0]+sign(closest_storage_cords[0]),self.pos[1])
+    def move_to_coord(self, coord, possible_steps):
+        if abs(coord[0]) > abs(coord[1]):
+            target_pos=(self.pos[0]+sign(coord[0]),self.pos[1])
             if self.model.grid.is_cell_empty(target_pos):
                 self.model.grid.move_agent(self,target_pos)
                 return
-        target_pos=(self.pos[0],self.pos[1]+sign(closest_storage_cords[1]))
+        target_pos=(self.pos[0],self.pos[1]+sign(coord[1]))
         if self.model.grid.is_cell_empty(target_pos):
                 self.model.grid.move_agent(self,target_pos)
                 return
@@ -194,13 +244,75 @@ class RobotAgent(SerializeAgent):
         position = random.choice(available_pos)
         self.model.grid.move_agent(self,position)
         return
-        
+
+    def move_to_closest_storage(self, possible_steps):
+        storages=filter(lambda x: isinstance(x,StorageAgent) and not x.is_full(), self.model.schedule.agents)
+        closest_storage_cords= self.get_closest_instance(storages)
+        self.move_to_coord(closest_storage_cords, possible_steps)
+    
+    def update_map(self):
+        for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
+            pos = (self.pos[0],y)
+            if self.model.grid.is_cell_empty(pos):
+                continue
+
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance, BoxAgent):
+                self.known_boxes[instance.pos] = instance.picked
+
+        for y in range(self.pos[1]-1, self.pos[1]-self.vision_intensity-1,-1):
+            pos = (self.pos[0],y)
+            if  self.model.grid.is_cell_empty(pos):
+                continue
+            
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent):
+                self.known_boxes[instance.pos] = instance.picked
+            break
+        for x in range(self.pos[0]+1, self.pos[0]+self.vision_intensity+1):
+            pos = (x,self.pos[1])
+            if  self.model.grid.is_cell_empty(pos):
+                continue
+
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent):
+                self.known_boxes[instance.pos] = instance.picked
+            break
+        for x in range(self.pos[0]-1, self.pos[0]-self.vision_intensity-1,-1):
+            pos = (x,self.pos[1])
+            if  self.model.grid.is_cell_empty(pos):
+                continue
+
+            instance = self.model.grid.get_cell_list_contents(pos)[0]
+            if isinstance(instance,BoxAgent) and not instance.picked:
+                self.known_boxes[instance.pos] = instance.picked
+            break
+    
+    def update_map(self, other: "RobotAgent"):
+        for (key, value) in other.known_boxes.items():
+            if (self.known_boxes.get(key, False)):
+                continue
+                
+            self.known_boxes[key] = value
+
+    def update_from_near_robots(self, neighborhood):
+        for block in neighborhood:
+            if not self.model.grid.is_cell_empty(block):
+                cell_container = self.model.grid.get_cell_list_contents(block)
+
+                if isinstance(cell_container[0], RobotAgent):
+                    self.update_map(cell_container[0])
+
     def deliver(self):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
+
+        self.update_from_near_robots(possible_steps)
+
         if self.deposit_to_near_storage(possible_steps):
             return
+
         self.move_to_closest_storage(possible_steps)
         self.steps_taken+=1
         

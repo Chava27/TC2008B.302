@@ -4,6 +4,7 @@ from mesa.time import RandomActivation
 from mesa.space import Grid
 from mesa.datacollection import DataCollector
 from .agent import RobotAgent, ObstacleAgent, BoxAgent, StorageAgent
+from functools import reduce
 
 class RandomModel(Model):
     """ 
@@ -21,7 +22,7 @@ class RandomModel(Model):
         self.schedule = RandomActivation(self)
         self.running = True 
         self.num_storage = num_storage
-        self.unpicked_boxes: List["BoxAgent"] = []
+        self.storages: List["StorageAgent"] = []
 
         self.datacollector = DataCollector( 
         agent_reporters={
@@ -41,6 +42,7 @@ class RandomModel(Model):
             cord = self.grid.find_empty()
             self.grid.place_agent(a, cord)
             self.schedule.add(a)
+            self.storages.append(a)
         
         # Add the agent to a random empty grid cell
         for i in range(self.num_agents):
@@ -53,16 +55,14 @@ class RandomModel(Model):
         for i in range(self.num_box):
             a= BoxAgent(i+3000, self)
             cord = self.grid.find_empty()
-            #Define possible position of box, not counting the borders
-            self.unpicked_boxes.append(a)
+            #Define possible position of box, not counting the border
             self.grid.place_agent(a, cord)
            
         self.datacollector.collect(self) #collect the data from the steps  
     
     def are_boxes_left(self) -> bool:
-        self.unpicked_boxes = list(filter(lambda x: not x.picked , self.unpicked_boxes))
-
-        return len(self.unpicked_boxes) > 0
+        sm = sum(map(lambda x: x.box_count,self.storages))
+        return sm < self.num_box
 
 
     def step(self):
