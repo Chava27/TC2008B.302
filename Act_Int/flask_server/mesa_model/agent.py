@@ -307,7 +307,6 @@ class RobotAgent(SerializeAgent):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
-        self.update_map()
         self.update_from_near_robots(possible_steps)
 
         if self.deposit_to_near_storage(possible_steps):
