@@ -3,6 +3,8 @@ from typing import TypedDict
 from flask import Flask, request
 from uuid import uuid4
 
+from pandas import DataFrame
+
 from mesa_model.model import RandomModel
 
 app = Flask(__name__)
@@ -55,15 +57,29 @@ def step(model_id):
 
     return {"model_id": model_id, "agents": data}, 200
    
-
-@app.route("/api/v1/reset")
-def reset():
-    return "Hello World!"
-
-@app.route("/api/v1/statistics")
-def statistics():
+@app.route("/api/v1/statistics/<model_id>")
+def statistics(model_id):
     # retun datacollector info 
-    return "Hello World!"
+    model = cache_sims[model_id]
+    df: DataFrame = model.datacollector.get_agent_vars_dataframe()
+
+    result_dict = { 
+        "max_steps": model.max_time,
+        "current_time": model.time,
+        "finished": not model.running,
+     }
+
+    last_rows = df[-model.num_agents:]
+    agents_data = []
+    for (index, row) in last_rows.iterrows():
+        agents_data.append({
+            "agent_id": index[1], # index => (Step, AgentID)
+            "steps": int(row["Steps"])
+        })
+
+    result_dict["robots_collected_data"] = agents_data
+
+    return result_dict, 200
 
 
 if __name__ == "__main__":

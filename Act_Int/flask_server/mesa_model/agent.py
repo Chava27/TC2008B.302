@@ -52,7 +52,7 @@ class RobotAgent(SerializeAgent):
         """
         super().__init__(unique_id, model)
         self.steps_taken = 0
-        self.explore_steps = 0
+        self.explore_steps = 1
         self.state= RobotState.EXPLORE
         self.initial_vision_intensity = vision_intensity
         self.vision_intensity = vision_intensity  
@@ -64,8 +64,15 @@ class RobotAgent(SerializeAgent):
             "state": self.state,
         }}
 
+    def decrease_vision(self): 
+        if (self.explore_steps % (self.initial_vision_intensity+1)) == 0 and self.vision_intensity > 1:
+            self.vision_intensity -= 1
+            self.explore_steps = 1
+
     def explore(self):
         #Reduce vision intensity if the robots gets to n steps without finding any box
+        self.decrease_vision()
+
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
@@ -81,10 +88,11 @@ class RobotAgent(SerializeAgent):
         elif direction == DirectionsEnum.LEFT:
             self.model.grid.move_agent(self, (self.pos[0]-1, self.pos[1]))
         self.explore_steps += 1
+        self.steps_taken+=1
 
  
     def move_to_closest_box(self) ->  int:
-        print("Vision Intensity",self.vision_intensity)
+        
         #UP, DOWN, RIGHT, LEFT
         score=[self.vision_intensity for i in range(4)]
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
@@ -132,11 +140,11 @@ class RobotAgent(SerializeAgent):
                 break
             break
         scores= list(filter(lambda x: x!=0, score)) 
-        print("Scores:",scores)
+        
         if len(scores)==0:
             return DirectionsEnum.CENTER
         direction = random.choice([i for i, x in enumerate(score) if x == max(score)])
-        print("Direction:",direction)
+        
         return direction        
 
     def pickup_closest_box(self,possible_steps) -> bool:
@@ -165,8 +173,6 @@ class RobotAgent(SerializeAgent):
             return (0,0)
         return (min_storage.pos[0]-self.pos[0],min_storage.pos[1]-self.pos[1])
 
-
-
     def move_to_closest_storage(self, possible_steps):
         storages=filter(lambda x: isinstance(x,StorageAgent) and not x.is_full(), self.model.schedule.agents)
 
@@ -189,7 +195,6 @@ class RobotAgent(SerializeAgent):
         self.model.grid.move_agent(self,position)
         return
         
-
     def deliver(self):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
@@ -197,8 +202,7 @@ class RobotAgent(SerializeAgent):
         if self.deposit_to_near_storage(possible_steps):
             return
         self.move_to_closest_storage(possible_steps)
-        
-        
+        self.steps_taken+=1
         
     def deposit_to_near_storage(self,possible_steps):
         for step in possible_steps:
@@ -218,7 +222,6 @@ class RobotAgent(SerializeAgent):
                     
         return False
         
-
     def move(self):
         """ 
         Determines if the agent can move in the direction that was chosen
@@ -229,14 +232,12 @@ class RobotAgent(SerializeAgent):
         elif self.state == RobotState.DELIVER:
             self.deliver()
 
-        self.steps_taken+=1
-
     def step(self):
         """ 
         Determines the new direction it will take, and then moves
         """
         # self.direction = self.random.randint(0,8)
-        # print(f"Agente: {self.unique_id} movimiento {self.direction}")
+        # 
         self.move()
 
 class BoxAgent(SerializeAgent):

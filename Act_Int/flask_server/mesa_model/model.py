@@ -1,3 +1,4 @@
+from typing import List
 from mesa import Model, agent
 from mesa.time import RandomActivation
 from mesa.space import Grid
@@ -20,6 +21,7 @@ class RandomModel(Model):
         self.schedule = RandomActivation(self)
         self.running = True 
         self.num_storage = num_storage
+        self.unpicked_boxes: List["BoxAgent"] = []
 
         self.datacollector = DataCollector( 
         agent_reporters={
@@ -52,14 +54,24 @@ class RandomModel(Model):
             a= BoxAgent(i+3000, self)
             cord = self.grid.find_empty()
             #Define possible position of box, not counting the borders
+            self.unpicked_boxes.append(a)
             self.grid.place_agent(a, cord)
            
         self.datacollector.collect(self) #collect the data from the steps  
+    
+    def are_boxes_left(self) -> bool:
+        self.unpicked_boxes = list(filter(lambda x: not x.picked , self.unpicked_boxes))
+
+        return len(self.unpicked_boxes) > 0
+
 
     def step(self):
         '''Advance the model by one step.'''
+        if not self.running:
+            return
+
         self.schedule.step()
         self.datacollector.collect(self)
         self.time +=1
-        if self.time == self.max_time - 1:
+        if self.time == self.max_time or not self.are_boxes_left():
             self.running = False
