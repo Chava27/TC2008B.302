@@ -182,6 +182,7 @@ public class AgentController : MonoBehaviour
         }
 
         AgentsData<AgentData> agentsData = JsonUtility.FromJson<AgentsData<AgentData>>(www.downloadHandler.text);
+        Debug.Log(www.downloadHandler.text);
 
         foreach(AgentData agent in agentsData.agents) {
             Debug.Log(agent);

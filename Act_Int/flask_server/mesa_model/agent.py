@@ -54,6 +54,43 @@ class BoxAgent(SerializeAgent):
             "picked": self.picked,
         }}
 
+class StorageAgent(SerializeAgent):
+    """
+    Trash agent. Must be eliminated when interaction with Random Agent.
+    """
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+        self.box_count=0
+        self.box_limit=5
+
+    @property
+    def serialized(self):
+        # merge with super
+        return {**super().serialized, **{
+            "box_count": self.box_count,
+        }}
+
+    def add_box(self):
+        if not self.is_full():
+            self.box_count+=1
+            return
+        raise Exception("Reached Maximum Boxes")
+
+    def is_full(self) -> bool:
+        return self.box_count >= self.box_limit
+
+    def step(self):
+        pass  
+
+class ObstacleAgent(SerializeAgent):
+
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+
+    def step(self):
+        pass  
+
+
 class RobotAgent(SerializeAgent):
     """
     Agent that moves randomly.
@@ -86,20 +123,19 @@ class RobotAgent(SerializeAgent):
 
     def explore(self):
         #Reduce vision intensity if the robots gets to n steps without finding any box
-        if self.explore_steps%(self.initial_vision_intensity*2) == 0 and self.vision_intensity>1:
-            self.vision_intensity -=1
+        #if self.explore_steps%(self.initial_vision_intensity*2) == 0 and self.vision_intensity>1:
+            #self.vision_intensity -=1
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
         if self.inspect_steps(possible_steps):
-            print("Founded Box while inspeting!")
             return
-        if len(self.map[2])>0:
-            print("Box List:", self.map[2])
-            print("Moving to Known Box")
+        #if len(self.map[2])>0:
+            #print("Box List:", self.map[2])
+            #print("Moving to Known Box")
             #no tiene sentido guardar en variable no retorna nada  <-----
-            self.move_to_closest_known_box(possible_steps)
-            return
+            #self.move_to_closest_known_box(possible_steps)
+            #return
         direction= self.move_to_closest_box()
         if direction == DirectionsEnum.UP:
             self.model.grid.move_agent(self, (self.pos[0], self.pos[1]+1))
@@ -113,8 +149,8 @@ class RobotAgent(SerializeAgent):
 
     #no falta ignorar los boxes invalidados??? <----- CHECK
     def move_to_closest_box(self) ->  int:
+        print("Vision Intensity",self.vision_intensity)
         #UP, DOWN, RIGHT, LEFT
-        print("Vision Int Explore Mode", self.vision_intensity)
         score=[self.vision_intensity for i in range(4)]
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
             pos = (self.pos[0],y)
@@ -122,12 +158,12 @@ class RobotAgent(SerializeAgent):
             if self.is_empty(pos):
                 score[DirectionsEnum.UP]+=1
                 continue
-
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Coords Found on:", pos)
-                self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(y-self.pos[1])+1)
+            if isinstance(instance,BoxAgent) and instance.picked:
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
+                score[DirectionsEnum.UP]+=1
+            if isinstance(instance,BoxAgent) and not instance.picked:
                 score[DirectionsEnum.UP]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
                 break
             break
@@ -138,11 +174,12 @@ class RobotAgent(SerializeAgent):
                 continue
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Coords Found on:", pos)
-                self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(self.pos[1]-y)+1)
-                score[DirectionsEnum.DOWN]+= (self.vision_intensity-abs(self.pos[1]-y)+1)*self.vision_intensity
+            if isinstance(instance,BoxAgent) and instance.picked:
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
+                score[DirectionsEnum.DOWN]+=1
+            if isinstance(instance,BoxAgent) and not instance.picked:
+                score[DirectionsEnum.DOWN]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
                 break
             break
         for x in range(self.pos[0]+1, self.pos[0]+self.vision_intensity+1):
@@ -152,11 +189,12 @@ class RobotAgent(SerializeAgent):
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Coords Found on:", pos)
-                self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(x-self.pos[0])+1)
-                score[DirectionsEnum.RIGHT]+= (self.vision_intensity-abs(x-self.pos[0])+1)*self.vision_intensity
+            if isinstance(instance,BoxAgent) and instance.picked:
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
+                score[DirectionsEnum.RIGHT]+=1
+            if isinstance(instance,BoxAgent) and not instance.picked:
+                score[DirectionsEnum.RIGHT]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
                 break
             break
         for x in range(self.pos[0]-1, self.pos[0]-self.vision_intensity-1,-1):
@@ -165,11 +203,12 @@ class RobotAgent(SerializeAgent):
                 score[DirectionsEnum.LEFT]+=1
                 continue
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and pos in self.map[1]:
-                print("Box Coords Found on:", pos)
-                self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(self.pos[0]-x)+1)
-                score[DirectionsEnum.LEFT]+= (self.vision_intensity-abs(self.pos[0]-x)+1)*self.vision_intensity
+            if isinstance(instance,BoxAgent) and instance.picked:
+                self.map[1].add(instance.pos)
+                self.map[2] = self.map[2].difference(self.map[1])
+                score[DirectionsEnum.LEFT]+=1
+            if isinstance(instance,BoxAgent) and not instance.picked:
+                score[DirectionsEnum.LEFT]+= (self.vision_intensity-abs(y-self.pos[1])+1)*self.vision_intensity
                 break
             break
         scores= list(filter(lambda x: x!=0, score)) 
@@ -197,13 +236,11 @@ class RobotAgent(SerializeAgent):
                     return True
                 #if the box is already picked, add coor to invalid coord
                 if isinstance(instance,BoxAgent) and instance.picked:
-                    print("Remove box from valid EXPLORE MODE:", step)
                     self.map[1].add(step)
                     self.map[2] = self.map[2].difference(self.map[1])
                     continue
                 #if robots get to know each other. Share Map
                 if isinstance(instance,RobotAgent):
-                    print("Share Map to RobotAgent EXPLORE MODE:", step)
                     self.map=self.share_map(instance)
                     continue
         #????  <----- 
@@ -211,7 +248,6 @@ class RobotAgent(SerializeAgent):
             cell_container= self.model.grid.get_cell_list_contents(self.pos)
             instance= cell_container[0]
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Remove invalid box EMPTY:", self.pos)
                 self.map[1].add(step)
                 self.map[2] = self.map[2].difference(self.map[1])
         return False 
@@ -264,12 +300,11 @@ class RobotAgent(SerializeAgent):
 
     def is_empty(self,coord):
         cell_container= self.model.grid.get_cell_list_contents(coord)
-        return self.model.grid.is_cell_empty(coord) or (isinstance(cell_container[0],BoxAgent) and cell_container[0].picked)
+        return self.model.grid.is_cell_empty(coord) or (isinstance(cell_container[0],BoxAgent) and (coord not in self.map[1]))
     
     #Implement Priority Que that upates distances each steps
     def move_to_closest_known_box(self, possible_steps):
         closest_box_cords= self.get_closest_box()
-        print("Closest Box Coords:", closest_box_cords)
         if abs(closest_box_cords[0]) > abs(closest_box_cords[1]):
             target_pos=(self.pos[0]+sign(closest_box_cords[0]),self.pos[1])
             if self.is_empty(target_pos):
@@ -303,20 +338,16 @@ class RobotAgent(SerializeAgent):
                     self.map=self.share_map(instance)
     #NO SERIA BUENA IDEA QUE DETECTE SI LA CAJA ES INVALIDA Y AGREGARLA AL MAPA <---------- check
     def update_map(self):
-        print("Vision Int DELIVER MODE", self.vision_intensity)
         for y in range(self.pos[1]+1, self.pos[1]+self.vision_intensity+1):
             pos = (self.pos[0],y)
-            if self.is_empty(pos):
+            if self.model.grid.is_cell_empty(pos):
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(y-self.pos[1])+1)
                 break
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Invalid Box Found DELIVER MODE:", pos)
                 self.map[1].add(instance.pos)
                 self.map[2] = self.map[2].difference(self.map[1])
             break
@@ -327,12 +358,9 @@ class RobotAgent(SerializeAgent):
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(self.pos[1]-y)+1)
                 break
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Invalid Box Found DELIVER MODE:", pos)
                 self.map[1].add(instance.pos)
                 self.map[2] = self.map[2].difference(self.map[1])
             break
@@ -343,12 +371,9 @@ class RobotAgent(SerializeAgent):
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(x-self.pos[0])+1)
                 break
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Invalid Box Found DELIVER MODE:", pos)
                 self.map[1].add(instance.pos)
                 self.map[2] = self.map[2].difference(self.map[1])
             break
@@ -359,12 +384,9 @@ class RobotAgent(SerializeAgent):
             
             instance = self.model.grid.get_cell_list_contents(pos)[0]
             if isinstance(instance,BoxAgent) and not instance.picked:
-                print("Box Coords Found DELIVER MODE:", pos)
                 self.map[2].add(instance.pos)
-                print(self.vision_intensity-abs(self.pos[0]-x)+1)
                 break
             if isinstance(instance,BoxAgent) and instance.picked:
-                print("Invalid Box Found DELIVER MODE:", pos)
                 self.map[1].add(instance.pos)
                 self.map[2] = self.map[2].difference(self.map[1])
             break
@@ -415,8 +437,6 @@ class RobotAgent(SerializeAgent):
 
         self.steps_taken+=1
 
-        
-
     def step(self):
         """ 
         Determines the new direction it will take, and then moves
@@ -424,41 +444,3 @@ class RobotAgent(SerializeAgent):
         # self.direction = self.random.randint(0,8)
         # 
         self.move()
-
-class StorageAgent(SerializeAgent):
-    """
-    Trash agent. Must be eliminated when interaction with Random Agent.
-    """
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
-        self.box_count=0
-        self.box_limit=5
-
-    @property
-    def serialized(self):
-        # merge with super
-        return {**super().serialized, **{
-            "box_count": self.box_count,
-        }}
-
-    def add_box(self):
-        if not self.is_full():
-            self.box_count+=1
-            return
-        raise Exception("Reached Maximum Boxes")
-
-    def is_full(self) -> bool:
-        return self.box_count >= self.box_limit
-
-    def step(self):
-        pass  
-
-
-
-class ObstacleAgent(SerializeAgent):
-
-    def __init__(self, unique_id, model):
-        super().__init__(unique_id, model)
-
-    def step(self):
-        pass  
