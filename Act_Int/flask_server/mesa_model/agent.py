@@ -284,7 +284,7 @@ class RobotAgent(SerializeAgent):
                 continue
 
             instance = self.model.grid.get_cell_list_contents(pos)[0]
-            if isinstance(instance,BoxAgent) and not instance.picked:
+            if isinstance(instance,BoxAgent):
                 self.known_boxes[instance.pos] = instance.picked
             break
     
@@ -307,7 +307,7 @@ class RobotAgent(SerializeAgent):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos,
             moore=False) # Boolean for whether to use Moore neighborhood (including diagonals) or Von Neumann (only up/down/left/right)
-
+        self.update_map()
         self.update_from_near_robots(possible_steps)
 
         if self.deposit_to_near_storage(possible_steps):
