@@ -1,5 +1,6 @@
 from typing import List
 
+
 def clamp(val, min, max):
     if val < min:
         return min
@@ -24,28 +25,35 @@ class GPS:
         self.graph = {}
 
         self.populate_graph(rows)
-        print(self.graph)
+        print(self.get_route((0,0)))
 
     def valid_position(self, cell, other, cell_pos, other_pos):
-        # dir_vector = (0, 1)
-        # other_dir =  (0, 1)
 
-        if cell == other and (cell != "S" or cell != "s"):
+        if ((cell == "S" or cell=="s") and (other== ">" and other_pos[0]> cell_pos[0])):
             return True
         
-        if (cell == "s" or cell == "S") and (other == "s" or other == "S"): # handle s in other lanes
+        if ((cell == "S" or cell=="s") and (other== "v" and other_pos[1]< cell_pos[1])):
+            return True
+
+        if ((cell == "S" or cell=="s") and (other== "<" and other_pos[0]< cell_pos[0])):
+            return True
+
+        if ((cell == "S" or cell=="s") and (other== "^" and other_pos[1]> cell_pos[1])):
+            return True
+
+        if (abs(cell_pos[0] - other_pos[0]) > 0) and (abs(cell_pos[1] - other_pos[1]) > 0) and cell != other:
             return False
         
-        if cell == ">" and (other == "^" or other == "v"):
+        if cell == ">" and (other == "^" or other == "v" or (other==">" and other_pos[0]>cell_pos[0])):
             return True
         
-        if cell == "v" and (other == "<" or other == ">"):
+        if cell == "v" and (other == "<" or other == ">" or (other=="v" and cell_pos[1]> other_pos[1])):
             return True
 
-        if cell == "<" and (other == "^" or other == "v"):
+        if cell == "<" and (other == "^" or other == "v" or (cell_pos[0]>other_pos[0])):
             return True
         
-        if cell == "^" and (other == "<" or other == ">"):
+        if cell == "^" and (other == "<" or other == ">" or (other=="^" and other_pos[1]>cell_pos[1])):
             return True
 
         if other == "D":
@@ -55,8 +63,8 @@ class GPS:
 
     def get_available_moves(self, pos,cell, rows):
         positions = set()
-        for x in range(clamp(pos[0]-1, 0, self.width), clamp(pos[0]+1, 0, self.width)):
-            for y in range(clamp(pos[1]-1, 0, self.height), clamp(pos[1] + 1, 0, self.height)):
+        for x in range(clamp(pos[0]-1, 0, self.width), clamp(pos[0]+1, 0, self.width)+1):
+            for y in range(clamp(pos[1]-1, 0, self.height), clamp(pos[1] + 1, 0, self.height)+1):
                 if x == pos[0] and y == pos[1]:
                     continue
                 if self.valid_position(cell, rows[x][y], pos, [x,y]):
@@ -68,82 +76,57 @@ class GPS:
             return True
                 
     def populate_graph(self, rows):
-        pos = [0,0]
-        for row in rows:
-            for cell in row:
-                ##########################
+        for y in range(self.height):
+            for x in range(self.width):
+                cell = rows[x][y]
                 if self.should_ignore(cell):
-                    pos[0] +=1
                     continue
-
-                self.graph[f"({pos[0]},{pos[1]})"] = self.get_available_moves(pos, cell, rows)
-                pos[0] +=1
-            pos[1] +1
-
-    def get_key(self, pos):
-        return f"({pos[0]},{pos[1]})"
-
-    def heuristic(self, pos, dest):
-        return sum(abs(val1-val2) for val1, val2 in zip(pos,dest))
-
-    def get_route(self,pos, dest):
-        open_set = set(self.get_key(pos))
-        closed_set = set()
-
-        g = {}
-        parents = {}
-
-        g[self.get_key(pos)] = 0
-        parents[self.get_key(pos)] = self.get_key(pos)
+                self.graph[(x,y)] = self.get_available_moves((18,16), cell, rows)
 
 
-        while len(open_set) > 0:
-            n = None
-            for v in open_set:
-                if n == None or g[self.get_key(pos)] + self.heuristic(v, dest) < g[self.get_key(pos)] + self.heuristic(n, dest):
-                    n = v 
-                
-            if n == self.get_key(dest) or self.graph[n] == None:
-                pass
-            
-            else:
-                for (m, weight) in self.graph.get(n, None):
-                    #nodes 'm' not in first and last set are added to first
-                    #n is set its parent
-                    if m not in open_set and m not in closed_set:
-                        open_set.add(m)
-                        parents[m] = n
-                        g[m] = g[n] + weight
-                    #for each node m,compare its distance from start i.e g(m) to the
-                    #from start through n node
-                    else:
-                        if g[m] > g[n] + weight:
-                            #update g(m)
-                            g[m] = g[n] + weight
-                            #change parent of m to n
-                            parents[m] = n
-                            #if m in closed set,remove and add to open
-                            if m in closed_set:
-                                closed_set.remove(m)
-                                open_set.add(m)
+    def minDistance(self, dist, sptSet):
+ 
+        # Initialize minimum distance for next node
+        min = 1e7
+ 
+        # Search not nearest vertex not in the
+        # shortest path tree
+        for v in self.graph.keys():
+            if dist[v] < min and sptSet[v] == False:
+                min = dist[v]
+                min_index = v
+ 
+        return min_index
+    
+    def printSolution(self, dist):
+        print("Vertex \t Distance from Source")
+        for node in range(self.V):
+            print(node, "\t\t", dist[node])
 
-            if n == None:
-                print('Path does not exist!')
-                return None
-
-            if n == dest:
-                path = []
-                while parents[n] != n:
-                    path.append(n)
-                    n = parents[n]
-                path.append(pos)
-                path.reverse()
-                print('Path found: {}'.format(path))
-                return path
-            # remove n from the open_list, and add it to closed_list
-            # because all of his neighbors were inspected
-            open_set.remove(n)
-            closed_set.add(n)
-            
-        return None
-
+    def get_route(self, src):
+        dist = {}
+        dist[src] = 0
+        sptSet = {}
+ 
+        for cout in range(len(self.graph.keys())):
+ 
+            # Pick the minimum distance vertex from
+            # the set of vertices not yet processed.
+            # u is always equal to src in first iteration
+            u = self.minDistance(dist, sptSet)
+ 
+            # Put the minimum distance vertex in the
+            # shortest path tree
+            sptSet[u] = True
+ 
+            # Update dist value of the adjacent vertices
+            # of the picked vertex only if the current
+            # distance is greater than new distance and
+            # the vertex in not in the shortest path tree
+            for v in self.graph.keys():
+                if ( v in self.graph[u] and
+                   sptSet[v] == False and
+                   dist[v] > dist[u] + 1):
+                    dist[v] = dist[u] + 1
+ 
+        self.printSolution(dist)
