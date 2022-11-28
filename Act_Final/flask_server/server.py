@@ -1,3 +1,4 @@
+from model.agent import CarState
 from model.model import TrafficModel
 from model.agent import CarAgent,DestinationAgent, RoadAgent,ObstacleAgent, StopAgent
 import mesa
@@ -24,6 +25,7 @@ def agent_portrayal(agent):
     if (isinstance(agent, CarAgent)):
         portrayal["Layer"] = 1
         portrayal["r"] = 0.2
+        portrayal["Color"] =  "green" if agent.invisible_time > 0 else  "blue" if agent.state != CarState.ARRIVED else "red"
 
     if (isinstance(agent, ObstacleAgent)):
         portrayal["Color"] = "black"
@@ -43,11 +45,11 @@ def agent_portrayal(agent):
         portrayal["Shape"]= "rect"
         portrayal["w"]= 1
         portrayal["h"]= 1
-        portrayal["text"] = agent.pos
+        portrayal["text"] = agent.direction
         portrayal["text_color"]="black"
 
     if (isinstance(agent, StopAgent)):
-        portrayal["Color"] = "red"
+        portrayal["Color"] = "red" if agent.active else "green"
         portrayal["Layer"] = 0
         portrayal["Shape"]= "rect"
         portrayal["w"]= 1

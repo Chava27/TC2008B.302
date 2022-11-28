@@ -1,3 +1,4 @@
+import random
 from typing import List, Tuple
 from mesa import Model, agent
 from mesa.time import RandomActivation
@@ -40,6 +41,8 @@ class TrafficModel(Model):
             "S": lambda id, model: StopAgent(id,model, "S")
         }     
 
+        self.destinations = []
+
         self.should_schedule = { "s", "S" }
 
         rows, height, width = self.parse_map(map)
@@ -47,12 +50,34 @@ class TrafficModel(Model):
         self.height = height
         self.map=[["" for i in range(self.width) ] for i in range(self.height)]
         self.rows = rows
+        self.time = 0
+        self.max_time = 1000
 
         self.grid = MultiGrid(width, height, torus=False)
+
+        self.road_positions = []
 
         self.spawn_agents(rows)
 
         self.gps = GPS(self.map)
+
+        # spawn car
+        # sample road positions
+
+        self.place_cars()
+
+
+    def place_cars(self):
+        positions = random.sample(self.road_positions, self.initial_cars)
+
+        for coord in positions:
+            agent_id = self.generate_agent_id()
+
+            agent = CarAgent(agent_id, self, coord)
+
+            self.schedule.add(agent)
+            self.grid.place_agent(agent, coord)
+        
 
     def generate_agent_id(self):
         return uuid4()
@@ -68,10 +93,21 @@ class TrafficModel(Model):
         self.grid.place_agent(agent, (pos[0],pos[1]))
 
         if cell in self.should_schedule:
+            print("Scheduling agent: ", agent_id)
             self.schedule.add(agent)
+
+        if cell == "D":
+            self.destinations.append(agent)
         
+        if cell in {">", "<", "v", "^"}:
+            self.road_positions.append(pos)
+        
+    def get_random_position(self):
+        positions = random.sample(self.road_positions, 1)
+        return positions[0]
 
-
+    def get_random_destination(self):
+        return random.choice(self.destinations).pos
 
     def parse_map(self, map: str) -> Tuple[List[str], int, int]:
         lines = map.split("\n")
@@ -92,5 +128,13 @@ class TrafficModel(Model):
                 self.spawn_agent(rows[y][x], (x,self.height-1-y))
                 self.map[x][self.height-1-y] = rows[y][x]
 
-                
+    def step(self):
+        '''Advance the model by one step.'''
+        if not self.running:
+            return
+
+        self.schedule.step()
+        self.time +=1
+        if self.time == self.max_time:
+            self.running = False
 
