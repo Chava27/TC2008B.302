@@ -38,12 +38,14 @@ class TrafficModel(Model):
             "#": lambda id, model: ObstacleAgent(id,model),
             "D": lambda id, model: DestinationAgent(id,model),
             "s": lambda id, model: StopAgent(id,model, "s"),
-            "S": lambda id, model: StopAgent(id,model, "S")
+            "S": lambda id, model: StopAgent(id,model, "S"),
+            "x": lambda id, model: StopAgent(id,model, "x"),
+            "X": lambda id, model: StopAgent(id,model, "X"),
         }     
 
         self.destinations = []
 
-        self.should_schedule = { "s", "S" }
+        self.should_schedule = { "s", "S", "x", "X" }
 
         rows, height, width = self.parse_map(map)
         self.width = width
@@ -93,7 +95,6 @@ class TrafficModel(Model):
         self.grid.place_agent(agent, (pos[0],pos[1]))
 
         if cell in self.should_schedule:
-            print("Scheduling agent: ", agent_id)
             self.schedule.add(agent)
 
         if cell == "D":

@@ -8,6 +8,7 @@ class CarState(enum.Enum):
     MOVING = 1
     ARRIVED = 2
 
+
 class SerializeAgent(Agent):
     @property
     def serialized(self) -> dict:
@@ -190,6 +191,9 @@ class CarAgent(SerializeAgent):
             return
 
         if self.state == CarState.WAITING:
+            if (self.route == None or len(self.route) == 0): 
+                return
+
             next_pos = self.route[0]
             
             cell_contents = self.model.grid.get_cell_list_contents([next_pos])
@@ -200,13 +204,16 @@ class CarAgent(SerializeAgent):
 
             #  check if any cell contents is a car
             for cell_content in cell_contents:
-                if isinstance(cell_content, CarAgent) and cell_content.state == CarState.WAITING:
+                if isinstance(cell_content, CarAgent) and cell_content.state != CarState.ARRIVED:
                     self.change_lane(next_pos)
                     return
 
             self.state = CarState.MOVING
 
             # pop the first element
+            if (len(self.route) <= 0): 
+                return
+
             self.route.pop(0)
             self.model.grid.move_agent(self, next_pos)
        
@@ -273,6 +280,12 @@ class DestinationAgent(SerializeAgent):
         # 
         self.move()
 
+class Direction(enum.IntEnum):
+    RIGHT = 0
+    LEFT = 1
+    UP = 2
+    DOWN = 3
+
 class RoadAgent(SerializeAgent):
     def __init__(self, unique_id, model, direction):
         """
@@ -283,7 +296,22 @@ class RoadAgent(SerializeAgent):
         """
         super().__init__(unique_id, model)
 
+        if (direction == ">"):
+            self.n_direction = Direction.RIGHT
+        elif direction == "<":
+            self.n_direction = Direction.LEFT
+        elif direction == "^":
+            self.n_direction = Direction.UP
+        else:
+            self.n_direction = Direction.DOWN
+
         self.direction = direction
+
+    @property
+    def serialized(self) -> dict:
+        return {**super().serialized, **{
+            "orientation": self.n_direction,
+        }}
     
     def move(self):
         """ 
@@ -333,12 +361,26 @@ class StopAgent(SerializeAgent):
         """
         super().__init__(unique_id, model)
 
-        self.active = initial_state == "s"
+        if (initial_state == "S"):
+            self.orientation = Direction.LEFT
+        elif initial_state == "s":
+            self.orientation = Direction.RIGHT
+        elif initial_state == "x":
+            self.orientation = Direction.UP
+        else:
+            self.orientation = Direction.DOWN
+
+        self.active = initial_state == "s" or initial_state == "x"
         self.update_time = 10
         self.time = 0
 
+    @property
+    def serialized(self) -> dict:
+        return {**super().serialized, **{
+            "orientation": self.orientation,
+        }}
+
     def step(self):
-        print("step", "stop agent") 
         if self.time == self.update_time:
             self.active = not self.active
             self.time = 0

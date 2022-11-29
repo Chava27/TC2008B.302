@@ -84,34 +84,30 @@ class GPS:
         self.graph_class = Graph(self.graph)
 
     def valid_position(self, cell, other, cell_pos, other_pos):
-        if ((cell == "S" or cell=="s") and (other== ">" and other_pos[0]> cell_pos[0])):
-            return True
-        
-        if ((cell == "S" or cell=="s") and (other== "v" and other_pos[1]< cell_pos[1])):
-            return True
-
-        if ((cell == "S" or cell=="s") and (other== "<" and other_pos[0]< cell_pos[0])):
-            return True
-
-        if ((cell == "S" or cell=="s") and (other== "^" and other_pos[1]> cell_pos[1])):
-            return True
 
         if (abs(cell_pos[0] - other_pos[0]) > 0) and (abs(cell_pos[1] - other_pos[1]) > 0) and cell != other:
             return False
+
+        otherIsRight = (other == ">" or other == "s")
+        otherIsLeft = (other == "<" or other == "S")
+        otherIsUp = (other == "^" or other == "x")
+        otherIsDown = (other == "v" or other == "X")
+
+        cellIsRight = (cell == ">" or cell == "s")
+        cellIsLeft = (cell == "<" or cell == "S")
+        cellIsUp =   (cell == "^" or cell == "x")
+        cellIsDown = (cell == "v" or cell == "X")
         
-        if other == "s" or other == "S":
+        if (cellIsRight) and ((otherIsUp and cell_pos[1] < other_pos[1]) or otherIsDown or (otherIsRight and other_pos[0]>cell_pos[0])):
             return True
         
-        if cell == ">" and ((other == "^" and cell_pos[1] < other_pos[1]) or other == "v" or (other==">" and other_pos[0]>cell_pos[0])):
-            return True
-        
-        if cell == "v" and (other == "<" or other == ">" or (other=="v" and cell_pos[1]> other_pos[1])):
+        if cellIsDown and (otherIsLeft or otherIsRight or (otherIsDown and cell_pos[1]> other_pos[1])):
             return True
 
-        if cell == "<" and (other == "^" or other == "v" or (cell_pos[0]>other_pos[0])):
+        if cellIsLeft and (otherIsUp or otherIsDown or (cell_pos[0]>other_pos[0])):
             return True
         
-        if cell == "^" and (other == "<" or other == ">" or (other=="^" and other_pos[1]>cell_pos[1])):
+        if cellIsUp and (otherIsLeft or otherIsRight or (otherIsUp and other_pos[1]>cell_pos[1])):
             return True
 
         if other == "D":

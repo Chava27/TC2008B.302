@@ -24,7 +24,7 @@ def init():
     # Validate Data received
     data = request.get_json()
 
-    map_key = data.get("map", "town")
+    map_key = data.get("map_name", "town")
 
     # merge dicts into default_params
     default_params.update((k, data[k]) for k in default_params.keys() & data.keys())
@@ -49,7 +49,7 @@ def init():
         for (cell, x, y) in model.grid.coord_iter() if cell is not None
     ]
 
-    return {"init_values": default_params , "model_id": model_id, "initial_agents": data}, 201
+    return {"init_values": default_params , "model_id": model_id, "initial_agents": data, "width": model.width, "height": model.height}, 201
 
 @app.route("/api/v1/step/<model_id>", methods=["GET"])
 def step(model_id):

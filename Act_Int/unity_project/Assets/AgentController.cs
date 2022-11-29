@@ -238,6 +238,5 @@ public class AgentController : MonoBehaviour
         }
 
         updated = true;
-        started = true;
     }
 }
