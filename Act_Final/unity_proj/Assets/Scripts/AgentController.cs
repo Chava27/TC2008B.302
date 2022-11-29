@@ -22,7 +22,8 @@ public class AgentData
     public AgentPos agent_pos;
      // Robot
     public int orientation;
-      public int state;
+    public int state;
+    public bool active;
 }
 
 [Serializable]
@@ -116,12 +117,17 @@ public class AgentController : MonoBehaviour
         {
     
             timer -= Time.deltaTime;
+            if (timer < 0){
+                timer = 0;
+            }
+            else{
             dt = 1.0f - (timer / timeToUpdate);
 
             foreach(var car in cars)
             {
 
                car.Value.GetComponent<CarController>().MoveTo(currPositions[car.Key], dt, timer);
+            }
             }
         }
     }
@@ -161,6 +167,7 @@ public class AgentController : MonoBehaviour
                 return Instantiate(roadPrefab, position, getOrientationFromEnum(data.orientation, true));
             case "StopAgent":
                 Debug.LogFormat("Stop SIGN: {0}", getOrientationFromEnum(data.orientation, true));
+                Debug.Log(data.agent_id);
                 semaphores[data.agent_id] = Instantiate(semaphorePrefab, position,  getOrientationFromEnum(data.orientation, true));
                 return semaphores[data.agent_id];
             case "DestinationAgent":
@@ -235,7 +242,7 @@ public class AgentController : MonoBehaviour
     IEnumerator StepSimulation() {
          UnityWebRequest www;
          AgentsData<AgentData> agentsData;
-        if (bufferedNextData == null)  {
+        //if (bufferedNextData == null)  {
             www = UnityWebRequest.Get(serverUrl + stepEndpoint + "/" + modelID);
             yield return www.SendWebRequest();
 
@@ -246,7 +253,7 @@ public class AgentController : MonoBehaviour
 
             agentsData = JsonUtility.FromJson<AgentsData<AgentData>>(www.downloadHandler.text);
             bufferedNextData = agentsData;
-        }
+        //}
 
         Vector3 newPosition;
 
@@ -258,7 +265,8 @@ public class AgentController : MonoBehaviour
                     Debug.LogFormat("Next Pos: {0},{1},{2}", newPosition.x, newPosition.y,  newPosition.z);
                     break;
                 case "StopAgent":
-                    // semaphores[agent.agent_id].GetComponent<Storage>().SetStackBoxes(agent.box_count);
+                    Debug.Log(agent.agent_id);
+                    semaphores[agent.agent_id].GetComponent<SemaphoreLights>().SetActive(agent.active);
                     break;
             }
 
@@ -266,7 +274,7 @@ public class AgentController : MonoBehaviour
         
 
         updated = true;
-
+/*
         www = UnityWebRequest.Get(serverUrl + stepEndpoint + "/" + modelID);
         yield return www.SendWebRequest();
 
@@ -277,7 +285,7 @@ public class AgentController : MonoBehaviour
 
         agentsData = JsonUtility.FromJson<AgentsData<AgentData>>(www.downloadHandler.text);
         bufferedNextData = agentsData;
-
-       
+*/
+  
     }
 }

@@ -378,6 +378,7 @@ class StopAgent(SerializeAgent):
     def serialized(self) -> dict:
         return {**super().serialized, **{
             "orientation": self.orientation,
+            "active": self.active
         }}
 
     def step(self):

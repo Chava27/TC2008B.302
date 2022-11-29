@@ -77,7 +77,7 @@ public class CarController : MonoBehaviour
     }
 
     public void MoveTo(Vector3 destination, float dt, float timer) {
-        Debug.LogFormat("Called MoveTo {0}", destination);
+        //Debug.LogFormat("Called MoveTo {0}", destination);
         Vector3 relativeDir = (destination - transform.position);
         relativeDir.Normalize();
 
@@ -85,8 +85,8 @@ public class CarController : MonoBehaviour
         transform.rotation = Quaternion.Slerp(startingRotation, finalRotation, dt * 1f + percentSteerComplete);
     
         distance = Vector3.Distance(transform.position, destination) - carLength/2f;
-         Debug.LogFormat("Position {0}", transform.position);
-        Debug.LogFormat("Distance {0}", distance);
+         //Debug.LogFormat("Position {0}", transform.position);
+        //Debug.LogFormat("Distance {0}", distance);
 
         speed = distance / timer;
 
