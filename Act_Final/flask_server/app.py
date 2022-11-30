@@ -22,6 +22,9 @@ def init():
     """
     default_params = {
         "initial_cars": 1,
+        "max_cars": 500,
+        "freq": 10,
+        "activation_time": 10,
     }
 
     # Validate Data received

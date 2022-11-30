@@ -39,6 +39,9 @@ public class AgentsData<T> where T : AgentData
 public class InitRequest {
     public int initial_cars;
     public string map_name;
+    public int max_cars;
+    public int freq;
+    public int activation_time;
 }
 
 [Serializable]
@@ -77,6 +80,9 @@ public class AgentController : MonoBehaviour
 
     public int nCars;
     public string mapName;
+    public int max_cars;
+    public int freq;
+    public int activation_time;
     public float timeToUpdate = 5.0f;
     private float timer, dt;
 
@@ -261,7 +267,23 @@ public class AgentController : MonoBehaviour
             switch (agent.agent_type) {
                 case "CarAgent":
                     newPosition = new Vector3(agent.agent_pos.x * tileSize, 1, agent.agent_pos.y * tileSize);
-                    currPositions[agent.agent_id] = newPosition;
+
+                    // destroy car if arrived
+                    if (agent.state == 2) {
+                        Destroy(cars[agent.agent_id]);
+                        cars.Remove(agent.agent_id);
+                        currPositions.Remove(agent.agent_id);
+                        continue;
+                    }
+
+                     // try to get car from cache if not instantiate it
+                    if (cars.ContainsKey(agent.agent_id)) {
+                        currPositions[agent.agent_id] = newPosition;
+                    } else {
+                        cars[agent.agent_id] = Instantiate(carPrefabs[UnityEngine.Random.Range(0, carPrefabs.Length)], newPosition, Quaternion.identity);
+                        currPositions[agent.agent_id] = newPosition;
+                    }
+    
                     Debug.LogFormat("Next Pos: {0},{1},{2}", newPosition.x, newPosition.y,  newPosition.z);
                     break;
                 case "StopAgent":
