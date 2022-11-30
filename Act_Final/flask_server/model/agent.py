@@ -32,15 +32,18 @@ class CarAgent(SerializeAgent):
         """
         super().__init__(unique_id, model)
 
+        # Calculate the agent's initial route
         dest = self.model.get_random_destination()
         self.destination = dest
+
+        # Cant use recall route to get the route, because the agent is not in the grid yet
         self.route = self.model.gps.shortest_path((pos), dest)
 
-        self.invisible_time = 0
+        # assert we have valid route
+        assert self.route != None and len(self.route) > 0
 
-        # pop the first element
-        if self.route is not None:
-            self.route.pop(0)
+        # we ignore the first element, since it is the current position
+        self.route.pop(0)
 
 
         self.state = CarState.MOVING
@@ -48,6 +51,9 @@ class CarAgent(SerializeAgent):
         print("route", self.route)
 
     def check_lane(self, pos):
+        """
+        Check if the lane is empty, not out of bounds and not occupied by another car
+        """
         if self.model.grid.out_of_bounds(pos):
             return False
 
@@ -59,29 +65,20 @@ class CarAgent(SerializeAgent):
         return False
 
     def recall_route(self, pos):
-        self.route = self.model.gps.shortest_path(pos, self.destination)
-        # pop the first element
-        if self.route is not None and len(self.route) > 0:
-            self.route.pop(0)
-        print("route", self.route)
-
-    def reset(self):
-        self.state = CarState.MOVING
-        self.destination = self.model.get_random_destination()
-        pos = self.model.get_random_position()
+        """
+        Ask gps to return the route to the destination
+        """
         self.route = self.model.gps.shortest_path(pos, self.destination)
 
-        # move to random position
-        self.model.grid.move_agent(self, pos)
-        self.invisible_time = 5
-
-        # pop the first element
-        if self.route is not None and len(self.route) > 0:
-            self.route.pop(0)
-        
-
+        # Ensure that the route is not empty
+        assert self.route != None and len(self.route) > 0
+        self.route.pop(0)
+      
 
     def change_lane(self, next_pos):
+        """
+        Change lane if possible, spaghetti code ahead
+        """
         # check other lane if is empty
         # if empty, move to other lane
 
@@ -94,7 +91,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(left_pos):
                 self.model.grid.move_agent(self, left_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(left_pos)
                 self.state = CarState.MOVING
@@ -102,7 +98,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(right_pos):
                 self.model.grid.move_agent(self, right_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(right_pos)
                 self.state = CarState.MOVING
@@ -115,7 +110,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(left_pos):
                 self.model.grid.move_agent(self, left_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(left_pos)
                 self.state = CarState.MOVING
@@ -123,7 +117,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(right_pos):
                 self.model.grid.move_agent(self, right_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(right_pos)
                 self.state = CarState.MOVING
@@ -136,7 +129,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(left_pos):
                 self.model.grid.move_agent(self, left_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(left_pos)
                 self.state = CarState.MOVING
@@ -144,7 +136,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(right_pos):
                 self.model.grid.move_agent(self, right_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(right_pos)
                 self.state = CarState.MOVING
@@ -157,7 +148,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(left_pos):
                 self.model.grid.move_agent(self, left_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(left_pos)
                 self.state = CarState.MOVING
@@ -165,7 +155,6 @@ class CarAgent(SerializeAgent):
 
             if self.check_lane(right_pos):
                 self.model.grid.move_agent(self, right_pos)
-                self.route.pop(0)
                 # recalculate route
                 self.recall_route(right_pos)
                 self.state = CarState.MOVING
@@ -174,79 +163,80 @@ class CarAgent(SerializeAgent):
         
         pass
     
-    def move(self):
-        """ 
-        Determines if the agent can move in the direction that was chosen
+
+    def waiting(self):
         """
+        Check if the car can move, if it can, move it and change state to moving
+        """
+        assert len(self.route) > 0
+        next_pos = self.route[0]
         
-        if self.invisible_time > 0:
-            self.invisible_time -= 1
-            
+        cell_contents = self.model.grid.get_cell_list_contents([next_pos])
 
-        if self.route is None:
-            return
-
-        if self.state == CarState.ARRIVED:
-            self.reset()
-            return
-
-        if self.state == CarState.WAITING:
-            if (self.route == None or len(self.route) == 0): 
-                return
-
-            next_pos = self.route[0]
-            
-            cell_contents = self.model.grid.get_cell_list_contents([next_pos])
-
-            if isinstance(cell_contents[0], StopAgent) and cell_contents[0].active:
-                self.change_lane(next_pos)
-                return
-
-            #  check if any cell contents is a car
-            for cell_content in cell_contents:
-                if isinstance(cell_content, CarAgent) and cell_content.state != CarState.ARRIVED:
-                    self.change_lane(next_pos)
-                    return
-
+        # if no cars
+        if (isinstance(cell_contents[0], StopAgent) and not cell_contents[0].active) or (isinstance(cell_contents[0], RoadAgent) and len(cell_contents) == 1) or (DestinationAgent in [ type(x) for x in cell_contents]):
             self.state = CarState.MOVING
-
-            # pop the first element
-            if (len(self.route) <= 0): 
-                return
-
-            self.route.pop(0)
             self.model.grid.move_agent(self, next_pos)
-       
 
-        if self.state == CarState.MOVING:
-            print(self.route)
-            if len(self.route) == 0:
+            if DestinationAgent in [type(x) for x in cell_contents]:
                 self.state = CarState.ARRIVED
                 return
 
-            # peek next route
-            next_pos = self.route[0]
+            self.route.pop(0)
+            return
 
-            #  check if position has no car
+        if isinstance(cell_contents[0], StopAgent) and cell_contents[0].active:
+            self.change_lane(next_pos)
+            return
 
-            cell_contents = self.model.grid.get_cell_list_contents([next_pos])
-            
-            if len(cell_contents) != 0:
-                #  check if any cell contents is a car
-                for cell_content in cell_contents:
-                    if isinstance(cell_content, CarAgent) and cell_content.state != CarState.ARRIVED:
-                        print("moved to", next_pos)
-                        self.state = CarState.WAITING
-                        return
+        #  check if any cell contents is a car
+        for cell_content in cell_contents:
+            if isinstance(cell_content, CarAgent) and cell_content.state != CarState.ARRIVED:
+                self.change_lane(next_pos)
+                return
 
-                if isinstance(cell_contents[0], StopAgent) and cell_contents[0].active:
-                    print("moved to", next_pos)
+    def moving(self):
+        if len(self.route) == 0 and isinstance(self.model.grid.get_cell_list_contents(self.pos)[0], DestinationAgent):
+            self.state = CarState.ARRIVED
+            return
+        print(self.route)
+        assert len(self.route) > 0
+        # peek next route
+        next_pos = self.route[0]
+
+        #  check if position has no car
+        cell_contents = self.model.grid.get_cell_list_contents([next_pos])
+        
+        if len(cell_contents) != 0:
+            #  check if any cell contents is a car
+            for cell_content in cell_contents:
+                if isinstance(cell_content, CarAgent) and cell_content.state != CarState.ARRIVED:
                     self.state = CarState.WAITING
                     return
 
-            next_pos = self.route.pop(0)
-            self.model.grid.move_agent(self, next_pos)
-            print("moved to", next_pos)
+            if isinstance(cell_contents[0], StopAgent) and cell_contents[0].active:
+                self.state = CarState.WAITING
+                return
+
+        # move to next position
+        next_pos = self.route.pop(0)
+        self.model.grid.move_agent(self, next_pos)
+
+    def move(self):
+        """ 
+        Determines if the agent can move in the direction that was chosen, handles state machine
+        """            
+        if self.state == CarState.ARRIVED:
+            self.model.delete_queue.append(self) # add to delete queue, so the model can delete it next step
+            return
+
+        if self.state == CarState.WAITING:
+            self.waiting()
+            return
+
+        if self.state == CarState.MOVING:
+            self.moving()
+            return
 
     def step(self):
         """ 
@@ -352,7 +342,7 @@ class ObstacleAgent(SerializeAgent):
         self.move()
 
 class StopAgent(SerializeAgent):
-    def __init__(self, unique_id, model, initial_state):
+    def __init__(self, unique_id, model, initial_state, activation_time):
         """
         Creates a new random agent.
         Args:
@@ -371,14 +361,13 @@ class StopAgent(SerializeAgent):
             self.orientation = Direction.DOWN
 
         self.active = initial_state == "s" or initial_state == "x"
-        self.update_time = 10
+        self.update_time = activation_time
         self.time = 0
 
     @property
     def serialized(self) -> dict:
         return {**super().serialized, **{
             "orientation": self.orientation,
-            "active": self.active
         }}
 
     def step(self):

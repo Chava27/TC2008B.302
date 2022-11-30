@@ -10,13 +10,16 @@ from model.model import TrafficModel
 app = Flask(__name__)
 
 
-cache_sims: dict[str, "RandomModel"] = {}
+cache_sims: dict[str, "TrafficModel"] = {}
 
 maps = {}
 
 
 @app.route("/api/v1/init", methods=["POST"])
 def init():
+    """
+    Initializes a new simulation and stores it in the cache.
+    """
     default_params = {
         "initial_cars": 1,
     }
@@ -53,6 +56,9 @@ def init():
 
 @app.route("/api/v1/step/<model_id>", methods=["GET"])
 def step(model_id):
+    """
+    Steps the simulation and returns the new state
+    """
     model = cache_sims.get(model_id, None)
 
     if model is None:
@@ -77,8 +83,9 @@ def statistics(model_id):
 
 if __name__ == "__main__":
     map = None
+
+    # Load town map
     with open('./model/town_blocks.txt', 'r') as file: # hardcoded map
         maps["town"] = file.read()[:-1]
-
 
     app.run(port=5000, debug=True)

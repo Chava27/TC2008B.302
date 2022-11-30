@@ -27,8 +27,10 @@ class Graph:
         distances = {start: 0}
 
         # check cache    
-        if start in self.cache and end in self.cache[start]:
-            return self.cache[start][end]
+        if start in self.cache and end in self.cache[start] and len(self.cache[start][end]) != 0:
+            print("Cache HIT",  self.cache[start][end])
+    
+            return self.cache[start][end][::]
 
         paths = {start: [start]}
 
@@ -53,18 +55,26 @@ class Graph:
                     pq.put((distances[v], v))
                     paths[v] = paths[u] + [v]   
                 
-   
+        if end not in paths:
+            return None
+
         # update cache
         if start not in self.cache:
             self.cache[start] = {}
 
-            for key, path in paths.items():
-                self.cache[start][key] = path
+        for key, path in paths.items():
+            if len(path) == 0 or (path[-1] != end):
+                continue
+            
+            assert path != []
+            self.cache[start][key] = path
         
-        if end not in self.cache[start]:
-            return None
+        res = self.cache[start].get(end)
 
-        return self.cache[start][end]
+        if res is not None:
+            return res[::]
+
+        return None
 
            
 
@@ -85,9 +95,6 @@ class GPS:
 
     def valid_position(self, cell, other, cell_pos, other_pos):
 
-        if (abs(cell_pos[0] - other_pos[0]) > 0) and (abs(cell_pos[1] - other_pos[1]) > 0) and cell != other:
-            return False
-
         otherIsRight = (other == ">" or other == "s")
         otherIsLeft = (other == "<" or other == "S")
         otherIsUp = (other == "^" or other == "x")
@@ -97,17 +104,31 @@ class GPS:
         cellIsLeft = (cell == "<" or cell == "S")
         cellIsUp =   (cell == "^" or cell == "x")
         cellIsDown = (cell == "v" or cell == "X")
+
+        xIsGreater = cell_pos[0] > other_pos[0]
+        yIsGreater = cell_pos[1] > other_pos[1]
+
+        xOtherIsGreater = other_pos[0] > cell_pos[0]
+        yOtherIsGreater = other_pos[1] > cell_pos[1]
+
+        yIsGreater = cell_pos[1] > other_pos[1]
+        yIsGreaterOrEqual = cell_pos[1] >= other_pos[1]
+
+        validUp = (otherIsUp and not yIsGreater)
+        validDown = (otherIsDown and  yIsGreaterOrEqual)
+        validLeft = (otherIsLeft and xIsGreater)
+        validRight = (otherIsRight and not xIsGreater)
         
-        if (cellIsRight) and ((otherIsUp and cell_pos[1] < other_pos[1]) or otherIsDown or (otherIsRight and other_pos[0]>cell_pos[0])):
+        if cellIsRight and ((validUp or validDown or otherIsRight ) and xOtherIsGreater):
             return True
         
-        if cellIsDown and (otherIsLeft or otherIsRight or (otherIsDown and cell_pos[1]> other_pos[1])):
+        if cellIsDown and ((validLeft or validRight or otherIsDown) and yIsGreater):
             return True
 
-        if cellIsLeft and (otherIsUp or otherIsDown or (cell_pos[0]>other_pos[0])):
+        if cellIsLeft and ((validUp or otherIsDown or otherIsLeft) and xIsGreater): # GOOD
             return True
         
-        if cellIsUp and (otherIsLeft or otherIsRight or (otherIsUp and other_pos[1]>cell_pos[1])):
+        if cellIsUp and ((validLeft or validRight or otherIsUp) and  yOtherIsGreater):
             return True
 
         if other == "D":

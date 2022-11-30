@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-simulation
+  labels:
+    app: traffic-simulation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-simulation
+  template:
+    metadata:
+      labels:
+        app: traffic-simulation
+    spec:
+      containers:
+      - name: traffic-simulation
+        image: us.icr.io/tec-sexto-semestre/traffic-simulation-server:v1.0.0 
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Always
+        

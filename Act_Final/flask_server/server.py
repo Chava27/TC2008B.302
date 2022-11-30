@@ -9,7 +9,7 @@ map = None
 with open('./model/town_blocks.txt', 'r') as file:
     map = file.read()[:-1]
 
-model_params = {"initial_cars":10, "map":map}
+model_params = {"initial_cars":10, "map":map, "max_cars": 500, "freq": 30, "activation_time": 10}
 #number of steps before ending
 
 def agent_portrayal(agent):
@@ -25,7 +25,7 @@ def agent_portrayal(agent):
     if (isinstance(agent, CarAgent)):
         portrayal["Layer"] = 1
         portrayal["r"] = 0.2
-        portrayal["Color"] =  "green" if agent.invisible_time > 0 else  "blue" if agent.state != CarState.ARRIVED else "red"
+        portrayal["Color"] = "green" if agent.state == CarState.WAITING else "blue" if agent.state != CarState.ARRIVED else "red"
 
     if (isinstance(agent, ObstacleAgent)):
         portrayal["Color"] = "black"
@@ -41,16 +41,16 @@ def agent_portrayal(agent):
     
     if (isinstance(agent, RoadAgent)):
         portrayal["Color"] = "grey"
-        portrayal["Layer"] = 0
+        portrayal["Layer"] = 1
         portrayal["Shape"]= "rect"
         portrayal["w"]= 1
         portrayal["h"]= 1
-        portrayal["text"] = agent.direction
+        portrayal["text"] = agent.pos
         portrayal["text_color"]="black"
 
     if (isinstance(agent, StopAgent)):
         portrayal["Color"] = "red" if agent.active else "green"
-        portrayal["Layer"] = 0
+        portrayal["Layer"] = 1
         portrayal["Shape"]= "rect"
         portrayal["w"]= 1
         portrayal["h"]= 1
