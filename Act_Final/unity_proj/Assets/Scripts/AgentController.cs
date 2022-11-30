@@ -207,6 +207,9 @@ public class AgentController : MonoBehaviour
     IEnumerator SendConfiguration()
     {
         InitRequest initRequest = new InitRequest();
+        initRequest.activation_time = activation_time;
+        initRequest.freq = freq;
+        initRequest.max_cars = max_cars;
         initRequest.initial_cars = nCars;
         initRequest.map_name = mapName;
 
@@ -270,6 +273,7 @@ public class AgentController : MonoBehaviour
 
                     // destroy car if arrived
                     if (agent.state == 2) {
+                        Debug.Log("Eliminating Car");
                         Destroy(cars[agent.agent_id]);
                         cars.Remove(agent.agent_id);
                         currPositions.Remove(agent.agent_id);

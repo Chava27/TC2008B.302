@@ -3,7 +3,7 @@ import enum
 import random
 import math
 
-class CarState(enum.Enum):
+class CarState(enum.IntEnum):
     WAITING = 0
     MOVING = 1
     ARRIVED = 2
@@ -48,7 +48,11 @@ class CarAgent(SerializeAgent):
 
         self.state = CarState.MOVING
 
-        print("route", self.route)
+    @property
+    def serialized(self) -> dict:
+        return {**super().serialized, **{
+        "state": self.state,
+    }}
 
     def check_lane(self, pos):
         """
@@ -368,6 +372,7 @@ class StopAgent(SerializeAgent):
     def serialized(self) -> dict:
         return {**super().serialized, **{
             "orientation": self.orientation,
+            "active": self.active
         }}
 
     def step(self):

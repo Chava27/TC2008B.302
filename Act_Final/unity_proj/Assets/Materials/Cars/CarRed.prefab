@@ -131,6 +131,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: RedCar Variant
       objectReference: {fileID: 0}
+    - target: {fileID: 8313699859791652910, guid: e9770e2ab5c2bac4caa728e6e63fa6f1,
+        type: 3}
+      propertyPath: m_Materials.Array.data[2]
+      value: 
+      objectReference: {fileID: 2100000, guid: e7d7642ff5421a040a515f4b2db6b021, type: 2}
     m_RemovedComponents:
     - {fileID: 3981089592422893150, guid: e9770e2ab5c2bac4caa728e6e63fa6f1, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: e9770e2ab5c2bac4caa728e6e63fa6f1, type: 3}
