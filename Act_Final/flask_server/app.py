@@ -75,9 +75,11 @@ def step(model_id):
         for (agent) in model.schedule.agent_buffer() if agent is not None
     ]
 
+    count = model.car_count
+    print(f"Car count: {count}")
 
     return {"model_id": model_id, "agents": data, "metadata": {
-        "car_agents": model.car_count,
+        "car_agents": count,
     }}, 200
    
 @app.route("/api/v1/statistics/<model_id>")
