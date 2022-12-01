@@ -58,7 +58,6 @@ class TrafficModel(Model):
         self.time = 0
         self.max_time = 1000
         self.delete_queue = []
-        self.car_count = initial_cars
 
         self.grid = MultiGrid(width, height, torus=False)
 
@@ -163,6 +162,9 @@ class TrafficModel(Model):
                 self.spawn_agent(rows[y][x], (x,self.height-1-y))
                 self.map[x][self.height-1-y] = rows[y][x]
 
+    @property
+    def car_count(self):
+        return len(list(filter(lambda x: isinstance(x, CarAgent), self.schedule._agents.values()))) 
     def spawn_cars(self):
         """
         Spawn cars in the map, if availble space
@@ -177,8 +179,6 @@ class TrafficModel(Model):
                 agent = CarAgent(uid,self, pos)
                 self.grid.place_agent(agent, pos)
                 self.schedule.add(agent)
-            
-                self.car_count += self.freq
                 
         except Exception as e:
             print("Error spawning cars, road is full", e)
@@ -196,7 +196,7 @@ class TrafficModel(Model):
             self.delete_queue.pop()
 
         if ((self.time % 5) == 0):
-             if ((len(list(filter(lambda x: isinstance(x, CarAgent), self.schedule._agents.values()))) + self.freq) < self.max_cars):
+             if (self.car_count + self.freq) < self.max_cars:
                 self.spawn_cars()
 
         self.time +=1

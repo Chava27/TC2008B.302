@@ -76,7 +76,9 @@ def step(model_id):
     ]
 
 
-    return {"model_id": model_id, "agents": data}, 200
+    return {"model_id": model_id, "agents": data, "metadata": {
+        "car_agents": model.car_count,
+    }}, 200
    
 @app.route("/api/v1/statistics/<model_id>")
 def statistics(model_id):
