@@ -271,7 +271,7 @@ Light:
   m_Type: 1
   m_Shape: 0
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 2
+  m_Intensity: 1.3
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -314,7 +314,7 @@ Light:
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
-  m_ColorTemperature: 5000
+  m_ColorTemperature: 2213
   m_UseColorTemperature: 1
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
@@ -532,9 +532,12 @@ MonoBehaviour:
   - {fileID: 7282343313424663761, guid: f4a08c46ff00dfc46b92355d4e00ccd6, type: 3}
   - {fileID: 7683395857058696981, guid: 4aae756fe1aa2e74f9e3d436b61c796f, type: 3}
   carPrefabs:
-  - {fileID: 8003683379571518946, guid: 4043dc6f0e141304889c2c87d21f6503, type: 3}
-  - {fileID: 7690623719630559336, guid: c1cd91da9a6430540bc9e4d81f3b4a39, type: 3}
+  - {fileID: 1522448176896929005, guid: 6683ebed01c8700489c9f345c8e7d554, type: 3}
+  - {fileID: 1173901099027674026, guid: 65a3eb4e455aaf643a279a26546be310, type: 3}
   nCars: 30
   mapName: town
+  max_cars: 100
+  freq: 3
+  activation_time: 10
   timeToUpdate: 5
   tileSize: 5
