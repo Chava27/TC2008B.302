@@ -96,10 +96,9 @@ public class AgentController : MonoBehaviour
     }
 
     private void Update() 
-    {
+    {   
         if(timer < 0)
         {
-            Debug.Log("Reset Timer");
             timer = timeToUpdate;
             updated = false;
             StartCoroutine(StepSimulation());
@@ -184,7 +183,6 @@ public class AgentController : MonoBehaviour
         AgentsData<AgentData> agentsData = JsonUtility.FromJson<AgentsData<AgentData>>(www.downloadHandler.text);
 
         foreach(AgentData agent in agentsData.agents) {
-            Debug.Log(agent);
             Vector3 newPosition = new Vector3(agent.agent_pos.x, 1, agent.agent_pos.y);
 
             if (!started) {
@@ -192,7 +190,6 @@ public class AgentController : MonoBehaviour
                 prevPositions[agent.agent_id] = newPosition;
 
                 var prefab = agentPrefab;
-                Debug.Log(agent.agent_type);
                 switch (agent.agent_type) {
                    
                     case "RobotAgent":
@@ -238,5 +235,6 @@ public class AgentController : MonoBehaviour
         }
 
         updated = true;
+        started = true;
     }
 }
